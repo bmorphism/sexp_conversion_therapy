@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Sexp Defenders</title>
+<title>Sexp Defenders :: GF(3)</title>
 <style>
 * { margin: 0; padding: 0; box-sizing: border-box; }
 
@@ -23,13 +23,12 @@ body {
   max-width: 800px;
   display: flex;
   justify-content: space-between;
-  padding: 10px 20px;
-  font-size: 16px;
+  padding: 8px 16px;
+  font-size: 14px;
   color: #7fdbca;
   z-index: 10;
 }
-
-#hud span { display: inline-block; min-width: 120px; }
+#hud span { display: inline-block; min-width: 90px; }
 
 canvas {
   border: 1px solid #1a3a4a;
@@ -45,35 +44,45 @@ canvas {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  background: rgba(10, 10, 26, 0.95);
+  background: rgba(10, 10, 26, 0.97);
   z-index: 100;
 }
 
 #start-screen h1, #game-over-screen h1 {
-  font-size: 48px;
+  font-size: 44px;
   color: #7fdbca;
-  margin-bottom: 10px;
+  margin-bottom: 6px;
   text-shadow: 0 0 20px rgba(127, 219, 202, 0.5);
 }
 
-#start-screen .subtitle {
+.subtitle {
   color: #c792ea;
-  font-size: 18px;
-  margin-bottom: 40px;
+  font-size: 16px;
+  margin-bottom: 8px;
 }
+
+.field-info {
+  color: #606080;
+  font-size: 13px;
+  margin-bottom: 24px;
+  line-height: 1.6;
+  text-align: center;
+}
+
+.field-info em { color: #82aaff; font-style: normal; }
 
 #game-over-screen .final-score {
   color: #f78c6c;
   font-size: 28px;
-  margin: 20px 0;
+  margin: 16px 0;
 }
 
 .instructions {
   color: #a0a0c0;
-  font-size: 14px;
-  line-height: 2;
+  font-size: 13px;
+  line-height: 2.0;
   text-align: center;
-  margin-bottom: 30px;
+  margin-bottom: 20px;
 }
 
 .instructions kbd {
@@ -84,17 +93,28 @@ canvas {
   color: #7fdbca;
 }
 
+.beam-legend {
+  display: flex;
+  gap: 24px;
+  margin-bottom: 24px;
+  font-size: 14px;
+}
+.beam-legend .bl { text-align: center; }
+.beam-legend .bl .sym { font-size: 22px; display: block; margin-bottom: 2px; }
+.bl-pos .sym { color: #c3e88d; }
+.bl-zero .sym { color: #e0e0e0; }
+.bl-neg .sym { color: #c792ea; }
+
 button.play-btn {
   background: none;
   border: 2px solid #7fdbca;
   color: #7fdbca;
   font-family: 'Courier New', monospace;
-  font-size: 20px;
-  padding: 12px 40px;
+  font-size: 18px;
+  padding: 10px 36px;
   cursor: pointer;
   transition: all 0.2s;
 }
-
 button.play-btn:hover {
   background: #7fdbca;
   color: #0a0a1a;
@@ -107,12 +127,20 @@ button.play-btn:hover {
 
 <div id="start-screen">
   <h1>( SEXP DEFENDERS )</h1>
-  <div class="subtitle">ppx_sexp_conv :: the arcade experience</div>
+  <div class="subtitle">GF(3) :: balanced ternary conversion</div>
+  <div class="field-info">
+    The simplest field with both <em>sign</em> and <em>zero</em>.<br>
+    Elements: <em>{-1, 0, +1}</em> &mdash; arithmetic mod 3.<br>
+    Fire the <em>additive inverse</em> to convert each sexp to zero.
+  </div>
+  <div class="beam-legend">
+    <div class="bl bl-pos"><span class="sym">+1</span><kbd>W</kbd> or <kbd>&uarr;</kbd></div>
+    <div class="bl bl-zero"><span class="sym">&nbsp;0</span><kbd>S</kbd> or <kbd>&darr;</kbd></div>
+    <div class="bl bl-neg"><span class="sym">-1</span><kbd>E</kbd> or <kbd>SHIFT</kbd></div>
+  </div>
   <div class="instructions">
-    <kbd>&larr;</kbd> <kbd>&rarr;</kbd> or <kbd>A</kbd> <kbd>D</kbd> to move<br>
-    <kbd>SPACE</kbd> to fire conversion beams<br>
-    Convert malformed sexps before they corrupt the heap!<br>
-    Chain conversions for combo multipliers
+    <kbd>&larr;</kbd> <kbd>&rarr;</kbd> move &nbsp;|&nbsp; <kbd>SPACE</kbd> fire<br>
+    Wrong beam? Value shifts in GF(3). Chain zeros for combos.
   </div>
   <button class="play-btn" onclick="startGame()">( start )</button>
 </div>
@@ -121,7 +149,9 @@ button.play-btn:hover {
   <h1>SEGFAULT</h1>
   <div class="final-score">Score: <span id="final-score-val">0</span></div>
   <div class="instructions">
-    Wave: <span id="final-wave">1</span> | Conversions: <span id="final-conversions">0</span>
+    Wave: <span id="final-wave">1</span> |
+    Conversions: <span id="final-conversions">0</span> |
+    Mismatches: <span id="final-mismatches">0</span>
   </div>
   <button class="play-btn" onclick="startGame()">( retry )</button>
 </div>
@@ -129,8 +159,9 @@ button.play-btn:hover {
 <div id="hud" class="hidden">
   <span>SCORE: <b id="score-val">0</b></span>
   <span>WAVE: <b id="wave-val">1</b></span>
+  <span>BEAM: <b id="beam-val">+1</b></span>
   <span>COMBO: <b id="combo-val">x1</b></span>
-  <span>LIVES: <b id="lives-val">&#x2764;&#x2764;&#x2764;</b></span>
+  <span>LIVES: <b id="lives-val"></b></span>
 </div>
 
 <canvas id="game" class="hidden"></canvas>
@@ -138,86 +169,73 @@ button.play-btn:hover {
 <script>
 const canvas = document.getElementById('game');
 const ctx = canvas.getContext('2d');
-
 const W = 800, H = 600;
-canvas.width = W;
-canvas.height = H;
+canvas.width = W; canvas.height = H;
 
-// Game state
 let game = null;
 
-const SEXP_ENEMIES = [
-  '(list 1 2 3)',
-  '(option Some)',
-  '(record (x 1))',
-  '(variant Foo)',
-  '(tuple 1 "a")',
-  '(array #[])',
-  '(poly `Bar)',
-  '(gadt T int)',
-  '(exn Not_found)',
-  '(hashtbl ())',
-  '((a 1)(b 2))',
-  '(Atom "hello")',
-  '(List ())',
-  '(sexp.opaque _)',
-  '(@default 0)',
-  '(of_sexp_error)',
-  '(Sexp.t list)',
-  '(ppx_deriving)',
-  '((malformed )',
-  '( unbalanced))',
-  '(((nested)))',
-  '(type_conv _)',
+// GF(3) arithmetic
+const GF3 = {
+  add: (a, b) => ((a + b) % 3 + 3) % 3,
+  neg: (a) => ((3 - a) % 3 + 3) % 3,
+  mul: (a, b) => ((a * b) % 3 + 3) % 3,
+  // Map GF(3) element {0,1,2} to balanced ternary {0,+1,-1}
+  toBalanced: (a) => a === 0 ? 0 : a === 1 ? 1 : -1,
+  fromBalanced: (b) => b === 0 ? 0 : b === 1 ? 1 : 2,
+  label: (a) => a === 0 ? ' 0' : a === 1 ? '+1' : '-1',
+  color: (a) => a === 0 ? '#e0e0e0' : a === 1 ? '#c3e88d' : '#c792ea',
+  glowColor: (a) => a === 0 ? '#888888' : a === 1 ? '#a0d070' : '#a070c0',
+};
+
+const SEXP_TEXTS = [
+  '(list 1 2 3)', '(option Some)', '(record (x 1))', '(variant Foo)',
+  '(tuple 1 "a")', '(array #[])', '(poly `Bar)', '(gadt T int)',
+  '(exn Not_found)', '(hashtbl ())', '((a 1)(b 2))', '(Atom "hello")',
+  '(sexp.opaque _)', '(@default 0)', '(of_sexp_error)', '(Sexp.t list)',
+  '((malformed )', '( unbalanced))', '(((nested)))', '(type_conv _)',
+  '(ppx_deriving)', '(Golay [11,6,5])', '(Hamming [n,k])', '(NTRU lattice)',
+  '(qutrit |0>+|1>+|2>)', '(Steiner triple)', '(AG(2,3) plane)',
+  '(Setun balanced)', '(stabilizer code)', '(ternary weight)',
 ];
 
-const CONVERTED_MESSAGES = [
-  '@@deriving sexp',
-  'sexp_of_t',
-  't_of_sexp',
-  'Sexp.to_string',
-  'converted!',
-  'serialized!',
-  'well-typed!',
-  'ppx_applied!',
+const CONVERT_MSGS = [
+  '@@deriving sexp', 'sexp_of_t', 't_of_sexp', 'zero in GF(3)!',
+  'converted!', 'well-typed!', 'additive inverse!', 'kernel element!',
 ];
+
+const MISMATCH_MSGS = [
+  'wrong field!', 'not the inverse!', 'mod 3 shift!', 'try again!',
+];
+
+// --- Entities ---
 
 class Particle {
-  constructor(x, y, color, vx, vy, life) {
-    this.x = x; this.y = y;
-    this.color = color;
+  constructor(x, y, color, vx, vy, life, char) {
+    this.x = x; this.y = y; this.color = color;
     this.vx = vx; this.vy = vy;
-    this.life = life;
-    this.maxLife = life;
+    this.life = life; this.maxLife = life;
+    this.char = char || '(';
   }
-  update(dt) {
-    this.x += this.vx * dt;
-    this.y += this.vy * dt;
-    this.life -= dt;
-  }
+  update(dt) { this.x += this.vx * dt; this.y += this.vy * dt; this.life -= dt; }
   draw() {
-    const alpha = Math.max(0, this.life / this.maxLife);
-    ctx.globalAlpha = alpha;
+    ctx.globalAlpha = Math.max(0, this.life / this.maxLife);
+    ctx.font = '12px Courier New';
     ctx.fillStyle = this.color;
-    ctx.fillText('(', this.x, this.y);
+    ctx.textAlign = 'center';
+    ctx.fillText(this.char, this.x, this.y);
     ctx.globalAlpha = 1;
   }
 }
 
 class FloatingText {
   constructor(x, y, text, color) {
-    this.x = x; this.y = y;
-    this.text = text; this.color = color;
-    this.life = 1.0;
+    this.x = x; this.y = y; this.text = text; this.color = color; this.life = 1.2;
   }
-  update(dt) {
-    this.y -= 40 * dt;
-    this.life -= dt;
-  }
+  update(dt) { this.y -= 35 * dt; this.life -= dt; }
   draw() {
-    ctx.globalAlpha = Math.max(0, this.life);
+    ctx.globalAlpha = Math.max(0, this.life / 1.2);
     ctx.fillStyle = this.color;
-    ctx.font = '14px Courier New';
+    ctx.font = '13px Courier New';
     ctx.textAlign = 'center';
     ctx.fillText(this.text, this.x, this.y);
     ctx.globalAlpha = 1;
@@ -225,11 +243,11 @@ class FloatingText {
 }
 
 class Bullet {
-  constructor(x, y) {
+  constructor(x, y, gf3val) {
     this.x = x; this.y = y;
-    this.speed = 500;
-    this.width = 3;
-    this.height = 16;
+    this.gf3 = gf3val; // 0, 1, or 2
+    this.speed = 480;
+    this.width = 4; this.height = 18;
     this.alive = true;
   }
   update(dt) {
@@ -237,125 +255,136 @@ class Bullet {
     if (this.y < -20) this.alive = false;
   }
   draw() {
-    // Glowing beam
-    ctx.shadowColor = '#7fdbca';
-    ctx.shadowBlur = 8;
-    ctx.fillStyle = '#7fdbca';
-    ctx.fillRect(this.x - 1, this.y, this.width, this.height);
+    const col = GF3.color(this.gf3);
+    const glow = GF3.glowColor(this.gf3);
+    ctx.shadowColor = glow;
+    ctx.shadowBlur = 10;
+    ctx.fillStyle = col;
+    ctx.fillRect(this.x - 2, this.y, this.width, this.height);
     ctx.shadowBlur = 0;
-
-    // Beam label
-    ctx.font = '9px Courier New';
+    ctx.font = 'bold 10px Courier New';
     ctx.textAlign = 'center';
-    ctx.fillStyle = '#c3f0e8';
-    ctx.fillText('sexp', this.x + 1, this.y - 2);
+    ctx.fillStyle = col;
+    ctx.fillText(GF3.label(this.gf3), this.x, this.y - 3);
   }
 }
 
 class Enemy {
-  constructor(x, y, text, hp, speed, points) {
+  constructor(x, y, text, gf3val, hp, speed, points) {
     this.x = x; this.y = y;
     this.text = text;
+    this.gf3 = gf3val;
     this.hp = hp; this.maxHp = hp;
     this.speed = speed;
     this.points = points;
     this.alive = true;
+    this.renderX = x;
+    ctx.font = '15px Courier New';
     this.width = ctx.measureText(text).width || text.length * 9;
     this.height = 20;
     this.wobble = Math.random() * Math.PI * 2;
-    this.wobbleSpeed = 1 + Math.random() * 2;
-    this.wobbleAmp = 20 + Math.random() * 30;
+    this.wobbleSpeed = 1.2 + Math.random() * 1.8;
+    this.wobbleAmp = 18 + Math.random() * 28;
+    this.flash = 0;
   }
   update(dt) {
     this.y += this.speed * dt;
     this.wobble += this.wobbleSpeed * dt;
     this.renderX = this.x + Math.sin(this.wobble) * this.wobbleAmp;
-    if (this.y > H + 20) {
-      this.alive = false;
-      return 'escaped';
-    }
+    if (this.flash > 0) this.flash -= dt;
+    if (this.y > H + 20) { this.alive = false; return 'escaped'; }
     return null;
   }
   draw() {
-    const hpRatio = this.hp / this.maxHp;
-    // Color shifts from red (damaged) to original
-    const r = Math.floor(247 * (1 - hpRatio) + 199 * hpRatio);
-    const g = Math.floor(140 * (1 - hpRatio) + 146 * hpRatio);
-    const b = Math.floor(108 * (1 - hpRatio) + 234 * hpRatio);
-    const color = `rgb(${r},${g},${b})`;
+    const col = GF3.color(this.gf3);
+    const glow = GF3.glowColor(this.gf3);
 
-    ctx.font = '16px Courier New';
+    // GF(3) value badge
+    ctx.font = 'bold 18px Courier New';
     ctx.textAlign = 'center';
+    ctx.shadowColor = glow;
+    ctx.shadowBlur = this.flash > 0 ? 20 : 8;
+    ctx.fillStyle = this.flash > 0 ? '#ffffff' : col;
+    ctx.fillText(GF3.label(this.gf3), this.renderX, this.y - 12);
 
-    // Glow for high HP enemies
-    if (this.maxHp > 1) {
-      ctx.shadowColor = color;
-      ctx.shadowBlur = 6;
-    }
-
-    ctx.fillStyle = color;
-    ctx.fillText(this.text, this.renderX, this.y);
+    // Sexp text
+    ctx.font = '14px Courier New';
+    ctx.shadowBlur = 4;
+    const hpRatio = this.hp / this.maxHp;
+    const alpha = 0.5 + 0.5 * hpRatio;
+    ctx.globalAlpha = alpha;
+    ctx.fillStyle = col;
+    ctx.fillText(this.text, this.renderX, this.y + 4);
+    ctx.globalAlpha = 1;
     ctx.shadowBlur = 0;
 
-    // HP bar for multi-hit enemies
+    // HP bar for multi-hit
     if (this.maxHp > 1) {
-      const barW = this.width;
-      const barH = 3;
+      const barW = Math.min(this.width, 80);
       const bx = this.renderX - barW / 2;
-      const by = this.y + 6;
+      const by = this.y + 10;
       ctx.fillStyle = '#1a1a2e';
-      ctx.fillRect(bx, by, barW, barH);
+      ctx.fillRect(bx, by, barW, 3);
       ctx.fillStyle = hpRatio > 0.5 ? '#7fdbca' : '#f78c6c';
-      ctx.fillRect(bx, by, barW * hpRatio, barH);
+      ctx.fillRect(bx, by, barW * hpRatio, 3);
     }
   }
   hitTest(bx, by, bw, bh) {
     return (
       bx < this.renderX + this.width / 2 &&
       bx + bw > this.renderX - this.width / 2 &&
-      by < this.y + 5 &&
-      by + bh > this.y - 15
+      by < this.y + 10 &&
+      by + bh > this.y - 18
     );
   }
 }
 
 class Player {
   constructor() {
-    this.x = W / 2;
-    this.y = H - 50;
-    this.speed = 300;
-    this.width = 40;
-    this.cooldown = 0;
-    this.fireRate = 0.18;
+    this.x = W / 2; this.y = H - 50;
+    this.speed = 300; this.cooldown = 0; this.fireRate = 0.16;
+    this.beamGF3 = 1; // start with +1
   }
   update(dt, keys) {
     if (keys['ArrowLeft'] || keys['a'] || keys['A']) this.x -= this.speed * dt;
     if (keys['ArrowRight'] || keys['d'] || keys['D']) this.x += this.speed * dt;
-    this.x = Math.max(20, Math.min(W - 20, this.x));
+    this.x = Math.max(25, Math.min(W - 25, this.x));
     this.cooldown = Math.max(0, this.cooldown - dt);
   }
+  setBeam(val) { this.beamGF3 = val; }
   fire() {
     if (this.cooldown <= 0) {
       this.cooldown = this.fireRate;
-      return new Bullet(this.x, this.y - 15);
+      return new Bullet(this.x, this.y - 18, this.beamGF3);
     }
     return null;
   }
   draw() {
-    // Draw the converter ship as an s-expression
-    ctx.font = 'bold 20px Courier New';
+    const col = GF3.color(this.beamGF3);
+    const glow = GF3.glowColor(this.beamGF3);
+
+    // Ship body
+    ctx.font = 'bold 22px Courier New';
     ctx.textAlign = 'center';
-    ctx.fillStyle = '#7fdbca';
-    ctx.shadowColor = '#7fdbca';
-    ctx.shadowBlur = 10;
+    ctx.fillStyle = col;
+    ctx.shadowColor = glow;
+    ctx.shadowBlur = 12;
     ctx.fillText('(\\)', this.x, this.y);
     ctx.shadowBlur = 0;
 
-    ctx.font = '10px Courier New';
-    ctx.fillStyle = '#3a6a7a';
-    ctx.fillText('ppx_sexp_conv', this.x, this.y + 14);
+    // Current beam label
+    ctx.font = 'bold 12px Courier New';
+    ctx.fillStyle = col;
+    ctx.fillText('beam: ' + GF3.label(this.beamGF3), this.x, this.y + 16);
+
+    // GF(3) indicator
+    ctx.font = '9px Courier New';
+    ctx.fillStyle = '#3a5a6a';
+    ctx.fillText('ppx_sexp_conv :: GF(3)', this.x, this.y + 28);
   }
 }
+
+// --- Game state ---
 
 function initGame() {
   return {
@@ -364,112 +393,174 @@ function initGame() {
     enemies: [],
     particles: [],
     floatingTexts: [],
-    score: 0,
-    lives: 3,
-    wave: 1,
-    combo: 0,
-    comboTimer: 0,
-    comboMultiplier: 1,
-    totalConversions: 0,
-    waveTimer: 0,
-    waveSpawnCount: 0,
-    waveEnemyCount: 0,
-    spawnInterval: 1.5,
+    score: 0, lives: 3, wave: 1,
+    combo: 0, comboTimer: 0, comboMultiplier: 1,
+    totalConversions: 0, totalMismatches: 0,
+    waveTimer: 0, waveSpawnCount: 0, waveEnemyCount: 0,
+    spawnInterval: 1.4,
     running: true,
     keys: {},
     starfield: createStarfield(),
+    fieldTable: createFieldTable(),
   };
 }
 
 function createStarfield() {
   const stars = [];
-  for (let i = 0; i < 80; i++) {
+  for (let i = 0; i < 100; i++) {
     stars.push({
-      x: Math.random() * W,
-      y: Math.random() * H,
+      x: Math.random() * W, y: Math.random() * H,
       size: Math.random() * 1.5 + 0.5,
-      speed: Math.random() * 20 + 5,
-      brightness: Math.random() * 0.5 + 0.2,
-      // Some stars are parens
-      isParen: Math.random() < 0.15,
+      speed: Math.random() * 15 + 5,
+      brightness: Math.random() * 0.4 + 0.1,
+      char: Math.random() < 0.12 ? (Math.random() < 0.5 ? '(' : ')') :
+            Math.random() < 0.05 ? ['+1', ' 0', '-1'][Math.floor(Math.random() * 3)] : null,
     });
   }
   return stars;
 }
 
+function createFieldTable() {
+  // GF(3) addition table for display
+  return {
+    add: [[0,1,2],[1,2,0],[2,0,1]],
+    mul: [[0,0,0],[0,1,2],[0,2,1]],
+  };
+}
+
 function spawnWaveEnemies() {
   const g = game;
-  const wave = g.wave;
-  const baseSpeed = 30 + wave * 8;
-  const count = 5 + wave * 3;
-
-  g.waveEnemyCount = count;
+  g.waveEnemyCount = 6 + g.wave * 2;
   g.waveSpawnCount = 0;
-  g.spawnInterval = Math.max(0.4, 1.5 - wave * 0.08);
+  g.spawnInterval = Math.max(0.35, 1.4 - g.wave * 0.07);
   g.waveTimer = 0;
 }
 
 function spawnEnemy() {
   const g = game;
   const wave = g.wave;
-  const text = SEXP_ENEMIES[Math.floor(Math.random() * SEXP_ENEMIES.length)];
-  const x = 60 + Math.random() * (W - 120);
-  const baseSpeed = 30 + wave * 8;
+  const text = SEXP_TEXTS[Math.floor(Math.random() * SEXP_TEXTS.length)];
+  const x = 70 + Math.random() * (W - 140);
+  const baseSpeed = 28 + wave * 7;
 
-  let hp = 1;
-  let speed = baseSpeed + Math.random() * 20;
-  let points = 10;
-
-  // Tougher enemies in later waves
-  if (wave >= 3 && Math.random() < 0.3) {
-    hp = 2;
-    points = 25;
-    speed *= 0.8;
-  }
-  if (wave >= 6 && Math.random() < 0.2) {
-    hp = 3;
-    points = 50;
-    speed *= 0.7;
+  // GF(3) value: 0, 1, or 2
+  // Wave 1-2: mostly non-zero (more interesting)
+  // Later: all values
+  let gf3val;
+  if (wave <= 2) {
+    gf3val = Math.random() < 0.15 ? 0 : (Math.random() < 0.5 ? 1 : 2);
+  } else {
+    gf3val = Math.floor(Math.random() * 3);
   }
 
-  // Measure text width
-  ctx.font = '16px Courier New';
+  let hp = 1, points = 15;
+  let speed = baseSpeed + Math.random() * 15;
 
-  g.enemies.push(new Enemy(x, -20, text, hp, speed, points));
+  // Golay waves (every 3rd): tougher, patterned
+  if (wave % 3 === 0) {
+    if (Math.random() < 0.4) { hp = 2; points = 30; speed *= 0.85; }
+  }
+  if (wave >= 5 && Math.random() < 0.2) { hp = 2; points = 30; speed *= 0.8; }
+  if (wave >= 8 && Math.random() < 0.15) { hp = 3; points = 60; speed *= 0.7; }
+
+  ctx.font = '15px Courier New';
+  g.enemies.push(new Enemy(x, -25, text, gf3val, hp, speed, points));
   g.waveSpawnCount++;
 }
 
-function spawnConversionParticles(x, y) {
-  const chars = ['(', ')', '@', '@', 'd', 'e', 'r', 'i', 'v', 'i', 'n', 'g'];
-  const colors = ['#7fdbca', '#c792ea', '#f78c6c', '#82aaff', '#c3e88d'];
-  for (let i = 0; i < 8; i++) {
-    const angle = (Math.PI * 2 * i) / 8;
-    const speed = 60 + Math.random() * 80;
+function spawnConversionParticles(x, y, gf3val) {
+  const chars = ['(', ')', '0', '+', '-', '1', '@', 'd'];
+  const col = GF3.color(gf3val);
+  const colors = [col, '#7fdbca', '#f78c6c', '#82aaff', '#c3e88d'];
+  for (let i = 0; i < 10; i++) {
+    const angle = (Math.PI * 2 * i) / 10;
+    const speed = 70 + Math.random() * 90;
     game.particles.push(new Particle(
       x, y,
       colors[Math.floor(Math.random() * colors.length)],
-      Math.cos(angle) * speed,
-      Math.sin(angle) * speed,
-      0.6 + Math.random() * 0.4
+      Math.cos(angle) * speed, Math.sin(angle) * speed,
+      0.5 + Math.random() * 0.5,
+      chars[Math.floor(Math.random() * chars.length)]
     ));
   }
+}
+
+function drawFieldTableOverlay() {
+  // Small GF(3) addition reference in bottom-left
+  const ox = 14, oy = H - 82;
+  ctx.globalAlpha = 0.35;
+  ctx.fillStyle = '#0a0a1a';
+  ctx.fillRect(ox - 4, oy - 14, 94, 72);
+  ctx.globalAlpha = 0.6;
+  ctx.font = '9px Courier New';
+  ctx.textAlign = 'left';
+  ctx.fillStyle = '#506070';
+  ctx.fillText('GF(3) +', ox, oy);
+
+  const labels = [' 0', '+1', '-1'];
+  const vals = [0, 1, 2];
+  // Header
+  for (let j = 0; j < 3; j++) {
+    ctx.fillStyle = GF3.color(vals[j]);
+    ctx.globalAlpha = 0.5;
+    ctx.fillText(labels[j], ox + 24 + j * 22, oy);
+  }
+  // Rows
+  for (let i = 0; i < 3; i++) {
+    ctx.fillStyle = GF3.color(vals[i]);
+    ctx.globalAlpha = 0.5;
+    ctx.fillText(labels[i], ox, oy + 14 + i * 16);
+    for (let j = 0; j < 3; j++) {
+      const result = game.fieldTable.add[i][j];
+      ctx.fillStyle = GF3.color(result);
+      ctx.globalAlpha = result === 0 ? 0.8 : 0.4;
+      ctx.fillText(labels[result], ox + 24 + j * 22, oy + 14 + i * 16);
+    }
+  }
+  ctx.globalAlpha = 1;
+}
+
+function drawBeamSelector() {
+  // Right side: beam selector visualization
+  const ox = W - 60, oy = H - 72;
+  const vals = [1, 0, 2]; // +1, 0, -1
+  const labels = ['+1', ' 0', '-1'];
+  ctx.font = '11px Courier New';
+  ctx.textAlign = 'center';
+  for (let i = 0; i < 3; i++) {
+    const active = game.player.beamGF3 === vals[i];
+    ctx.globalAlpha = active ? 1.0 : 0.25;
+    ctx.fillStyle = GF3.color(vals[i]);
+    if (active) {
+      ctx.shadowColor = GF3.glowColor(vals[i]);
+      ctx.shadowBlur = 8;
+    }
+    ctx.fillText(active ? '>' + labels[i] + '<' : ' ' + labels[i], ox, oy + i * 18);
+    ctx.shadowBlur = 0;
+  }
+  ctx.globalAlpha = 1;
 }
 
 function updateHUD() {
   document.getElementById('score-val').textContent = game.score;
   document.getElementById('wave-val').textContent = game.wave;
+  const bl = GF3.label(game.player.beamGF3);
+  const bel = document.getElementById('beam-val');
+  bel.textContent = bl;
+  bel.style.color = GF3.color(game.player.beamGF3);
   document.getElementById('combo-val').textContent = 'x' + game.comboMultiplier;
   document.getElementById('combo-val').style.color =
     game.comboMultiplier > 1 ? '#f78c6c' : '#7fdbca';
-  const hearts = '\u2764'.repeat(game.lives);
-  document.getElementById('lives-val').textContent = hearts || '\u2620';
+  document.getElementById('lives-val').textContent =
+    '\u2764'.repeat(game.lives) || '\u2620';
 }
 
-function gameOver() {
+function doGameOver() {
   game.running = false;
   document.getElementById('final-score-val').textContent = game.score;
   document.getElementById('final-wave').textContent = game.wave;
   document.getElementById('final-conversions').textContent = game.totalConversions;
+  document.getElementById('final-mismatches').textContent = game.totalMismatches;
   document.getElementById('game-over-screen').classList.remove('hidden');
   canvas.classList.add('hidden');
   document.getElementById('hud').classList.add('hidden');
@@ -479,132 +570,169 @@ let lastTime = 0;
 
 function gameLoop(timestamp) {
   if (!game || !game.running) return;
-
   const dt = Math.min((timestamp - lastTime) / 1000, 0.05);
   lastTime = timestamp;
 
-  // Update starfield
-  game.starfield.forEach(s => {
+  const g = game;
+  const keys = g.keys;
+
+  // --- Beam selection ---
+  // W/Up = +1, S/Down = 0, E/Shift = -1
+  if (keys['ArrowUp'] || keys['w'] || keys['W']) g.player.setBeam(1);
+  if (keys['ArrowDown'] || keys['s'] || keys['S']) g.player.setBeam(0);
+  if (keys['Shift'] || keys['e'] || keys['E']) g.player.setBeam(2);
+  // Also: 1/2/3 keys
+  if (keys['1']) g.player.setBeam(1);
+  if (keys['2']) g.player.setBeam(0);
+  if (keys['3']) g.player.setBeam(2);
+
+  // --- Player ---
+  g.player.update(dt, keys);
+  if (keys[' ']) {
+    const b = g.player.fire();
+    if (b) g.bullets.push(b);
+  }
+
+  // --- Starfield ---
+  g.starfield.forEach(s => {
     s.y += s.speed * dt;
     if (s.y > H) { s.y = 0; s.x = Math.random() * W; }
   });
 
-  // Player
-  game.player.update(dt, game.keys);
-  if (game.keys[' ']) {
-    const b = game.player.fire();
-    if (b) game.bullets.push(b);
-  }
+  // --- Bullets ---
+  g.bullets.forEach(b => b.update(dt));
+  g.bullets = g.bullets.filter(b => b.alive);
 
-  // Bullets
-  game.bullets.forEach(b => b.update(dt));
-  game.bullets = game.bullets.filter(b => b.alive);
-
-  // Wave spawning
-  game.waveTimer += dt;
-  if (game.waveSpawnCount < game.waveEnemyCount && game.waveTimer >= game.spawnInterval) {
-    game.waveTimer = 0;
+  // --- Spawning ---
+  g.waveTimer += dt;
+  if (g.waveSpawnCount < g.waveEnemyCount && g.waveTimer >= g.spawnInterval) {
+    g.waveTimer = 0;
     spawnEnemy();
   }
 
-  // Check wave complete
-  if (game.waveSpawnCount >= game.waveEnemyCount && game.enemies.length === 0) {
-    game.wave++;
+  // --- Wave complete ---
+  if (g.waveSpawnCount >= g.waveEnemyCount && g.enemies.length === 0) {
+    g.wave++;
     spawnWaveEnemies();
-    game.floatingTexts.push(new FloatingText(W / 2, H / 2, `-- Wave ${game.wave} --`, '#c792ea'));
+    const waveLabel = g.wave % 3 === 0 ? `-- Golay Wave ${g.wave} --` : `-- Wave ${g.wave} --`;
+    g.floatingTexts.push(new FloatingText(W / 2, H / 2, waveLabel, '#c792ea'));
   }
 
-  // Combo timer
-  if (game.comboTimer > 0) {
-    game.comboTimer -= dt;
-    if (game.comboTimer <= 0) {
-      game.combo = 0;
-      game.comboMultiplier = 1;
-    }
+  // --- Combo timer ---
+  if (g.comboTimer > 0) {
+    g.comboTimer -= dt;
+    if (g.comboTimer <= 0) { g.combo = 0; g.comboMultiplier = 1; }
   }
 
-  // Enemies
-  for (const enemy of game.enemies) {
+  // --- Enemies ---
+  for (const enemy of g.enemies) {
     const result = enemy.update(dt);
     if (result === 'escaped') {
-      game.lives--;
-      game.combo = 0;
-      game.comboMultiplier = 1;
-      game.floatingTexts.push(new FloatingText(enemy.renderX, H - 30, 'HEAP CORRUPTION!', '#ff5370'));
-      if (game.lives <= 0) {
-        gameOver();
-        return;
-      }
+      g.lives--;
+      g.combo = 0; g.comboMultiplier = 1;
+      g.floatingTexts.push(new FloatingText(
+        enemy.renderX, H - 30, 'HEAP CORRUPTION!', '#ff5370'));
+      if (g.lives <= 0) { doGameOver(); return; }
     }
   }
 
-  // Collision detection
-  for (const bullet of game.bullets) {
-    for (const enemy of game.enemies) {
+  // --- Collisions (GF(3) arithmetic!) ---
+  for (const bullet of g.bullets) {
+    for (const enemy of g.enemies) {
       if (!enemy.alive || !bullet.alive) continue;
       if (enemy.hitTest(bullet.x, bullet.y, bullet.width, bullet.height)) {
         bullet.alive = false;
-        enemy.hp--;
-        if (enemy.hp <= 0) {
-          enemy.alive = false;
-          game.combo++;
-          game.comboTimer = 2.0;
-          game.comboMultiplier = Math.min(8, 1 + Math.floor(game.combo / 3));
-          const pts = enemy.points * game.comboMultiplier;
-          game.score += pts;
-          game.totalConversions++;
-          spawnConversionParticles(enemy.renderX, enemy.y);
-          const msg = CONVERTED_MESSAGES[Math.floor(Math.random() * CONVERTED_MESSAGES.length)];
-          game.floatingTexts.push(new FloatingText(enemy.renderX, enemy.y - 10, `+${pts} ${msg}`, '#c3e88d'));
+        const sum = GF3.add(enemy.gf3, bullet.gf3);
+
+        if (sum === 0) {
+          // Correct inverse! Convert the enemy.
+          enemy.hp--;
+          if (enemy.hp <= 0) {
+            enemy.alive = false;
+            g.combo++;
+            g.comboTimer = 2.5;
+            g.comboMultiplier = Math.min(9, 1 + Math.floor(g.combo / 2));
+            const pts = enemy.points * g.comboMultiplier;
+            g.score += pts;
+            g.totalConversions++;
+            spawnConversionParticles(enemy.renderX, enemy.y, enemy.gf3);
+            const msg = CONVERT_MSGS[Math.floor(Math.random() * CONVERT_MSGS.length)];
+            g.floatingTexts.push(new FloatingText(
+              enemy.renderX, enemy.y - 15,
+              `+${pts} ${msg}`, '#c3e88d'));
+          } else {
+            // Multi-hit: took a hit but survived, re-randomize GF(3) value
+            enemy.gf3 = Math.floor(Math.random() * 3);
+            enemy.flash = 0.3;
+            g.floatingTexts.push(new FloatingText(
+              enemy.renderX, enemy.y - 15,
+              `hit! now ${GF3.label(enemy.gf3)}`, '#ffcb6b'));
+          }
         } else {
-          game.floatingTexts.push(new FloatingText(enemy.renderX, enemy.y - 10, 'hit!', '#ffcb6b'));
+          // Wrong beam! Enemy's value shifts to the sum.
+          enemy.gf3 = sum;
+          enemy.flash = 0.2;
+          g.totalMismatches++;
+          g.combo = 0; g.comboMultiplier = 1; g.comboTimer = 0;
+          const msg = MISMATCH_MSGS[Math.floor(Math.random() * MISMATCH_MSGS.length)];
+          g.floatingTexts.push(new FloatingText(
+            enemy.renderX, enemy.y - 15,
+            `${GF3.label(enemy.gf3)} ${msg}`, '#ff8a80'));
         }
       }
     }
   }
 
-  game.enemies = game.enemies.filter(e => e.alive);
+  g.enemies = g.enemies.filter(e => e.alive);
 
-  // Particles
-  game.particles.forEach(p => p.update(dt));
-  game.particles = game.particles.filter(p => p.life > 0);
+  // --- Particles & floating texts ---
+  g.particles.forEach(p => p.update(dt));
+  g.particles = g.particles.filter(p => p.life > 0);
+  g.floatingTexts.forEach(t => t.update(dt));
+  g.floatingTexts = g.floatingTexts.filter(t => t.life > 0);
 
-  // Floating texts
-  game.floatingTexts.forEach(t => t.update(dt));
-  game.floatingTexts = game.floatingTexts.filter(t => t.life > 0);
-
-  // --- DRAW ---
+  // ========== DRAW ==========
   ctx.clearRect(0, 0, W, H);
 
   // Starfield
-  game.starfield.forEach(s => {
+  g.starfield.forEach(s => {
     ctx.globalAlpha = s.brightness;
-    if (s.isParen) {
+    if (s.char) {
       ctx.font = '10px Courier New';
       ctx.fillStyle = '#2a3a4a';
-      ctx.fillText(Math.random() < 0.5 ? '(' : ')', s.x, s.y);
+      ctx.textAlign = 'center';
+      ctx.fillText(s.char, s.x, s.y);
     } else {
-      ctx.fillStyle = '#4a5a6a';
+      ctx.fillStyle = '#3a4a5a';
       ctx.fillRect(s.x, s.y, s.size, s.size);
     }
     ctx.globalAlpha = 1;
   });
 
   // Enemies
-  game.enemies.forEach(e => e.draw());
-
+  g.enemies.forEach(e => e.draw());
   // Bullets
-  game.bullets.forEach(b => b.draw());
-
+  g.bullets.forEach(b => b.draw());
   // Player
-  game.player.draw();
-
+  g.player.draw();
   // Particles
-  ctx.font = '12px Courier New';
-  game.particles.forEach(p => p.draw());
-
+  g.particles.forEach(p => p.draw());
   // Floating texts
-  game.floatingTexts.forEach(t => t.draw());
+  g.floatingTexts.forEach(t => t.draw());
+
+  // Overlays
+  drawFieldTableOverlay();
+  drawBeamSelector();
+
+  // Golay wave indicator
+  if (g.wave % 3 === 0) {
+    ctx.globalAlpha = 0.15 + 0.1 * Math.sin(timestamp / 300);
+    ctx.font = '11px Courier New';
+    ctx.textAlign = 'center';
+    ctx.fillStyle = '#c792ea';
+    ctx.fillText('[ Golay Wave :: [11,6,5] over GF(3) ]', W / 2, H - 8);
+    ctx.globalAlpha = 1;
+  }
 
   updateHUD();
   requestAnimationFrame(gameLoop);
@@ -621,7 +749,7 @@ function startGame() {
 
   document.onkeydown = (e) => {
     game.keys[e.key] = true;
-    if (e.key === ' ') e.preventDefault();
+    if (e.key === ' ' || e.key === 'ArrowUp' || e.key === 'ArrowDown') e.preventDefault();
   };
   document.onkeyup = (e) => { game.keys[e.key] = false; };
 
